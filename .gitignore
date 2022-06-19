@@ -1,5 +1,5 @@
 .env
 .vscode/
-config.cfg
+*.cfg
 
 __pycache__/
