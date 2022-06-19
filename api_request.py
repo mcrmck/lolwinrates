@@ -23,83 +23,68 @@ def winrate(wins, losses):
     return wins / (wins + losses) * 100
 
 
-def getSummonerId(summonerName: str, region):
-    """
-    Each player has an encrypted account ID that is used to get match history and other data
-    """
-    summonerNameUrl = f'https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}'
-    response = requests.get(summonerNameUrl, headers=headers)
-    if not response.ok:
-        print(response.json()['status']['message'])
-        exit()
-    return response.json()['puuid']
-
-
-def getMatchList(summonerId: str, queue: int, routing):
-    params = f'?queue={queue}&count=5'
+def getMatchList(summonerId: str, routing):
+    params = f'?type=ranked&count=100'
     summonerMatchlistUrl = f'https://{routing}.api.riotgames.com/lol/match/v5/matches/by-puuid/{summonerId}/ids{params}'
     res = requests.get(summonerMatchlistUrl, headers=headers).json()
     return res
 
 
-def displayWinrates(summonerId, matchList: list, routing):
-    """
-    Iterates through matchlist, prints out results and returns list of
-    champions played, and a list of their corresponding winrates
-    """
-    wins, losses = (0, 0)
-    champion_winrates = {}
+def displayWinrates(summonerId, matchList: list, routing, target_champion):
+  """
+  Iterates through matchlist, prints out results and returns list of
+  champions played, and a list of their corresponding winrates
+  """
+  wins, losses = (0, 0)
+  champion_winrates = {}
 
-    # Parse through matchlist
-    for matchId in matchList:
+  # Parse through matchlist
+  for matchId in matchList:
 
-        # Access match data
-        matchUrl = f'https://{routing}.api.riotgames.com/lol/match/v5/matches/{matchId}'
-        matchInfo = requests.get(matchUrl, headers=headers).json()["info"]
+      # Access match data
+      matchUrl = f'https://{routing}.api.riotgames.com/lol/match/v5/matches/{matchId}'
+      matchInfo = requests.get(matchUrl, headers=headers).json()["info"]
 
-        for player in matchInfo["participants"]:
-            if player["puuid"] == summonerId:
-                win = player["win"]
-                champion = player["championName"]
-                break
+      for player in matchInfo["participants"]:
+          if player["puuid"] == summonerId:
+              win = player["win"]
+              champion = player["championName"]
+              break
 
-        # Increments win/loss counters for overall and per champion
-        if win:
-            wins += 1
-            if champion in champion_winrates:
-                champion_winrates[champion][0] += 1
-            else:
-                champion_winrates[champion] = [1, 0, 0]
-        else:
-            losses += 1
-            if champion in champion_winrates:
-                champion_winrates[champion][1] += 1
-            else:
-                champion_winrates[champion] = [0, 1, 0]
-        champion_winrates[champion][2] += 1
+      # Increments win/loss counters for overall and per champion
+      if win:
+          wins += 1
+          if champion in champion_winrates:
+              champion_winrates[champion][0] += 1
+          else:
+              champion_winrates[champion] = [1, 0, 0]
+      else:
+          losses += 1
+          if champion in champion_winrates:
+              champion_winrates[champion][1] += 1
+          else:
+              champion_winrates[champion] = [0, 1, 0]
+      champion_winrates[champion][2] += 1
 
-    # Sort champions in descending order of games
-    champion_winrates = dict(
-        sorted(champion_winrates.items(), reverse=True, key=lambda x: x[1][2]))
-    champion_list = []
-    champion_winrates_list = []
+  # Sort champions in descending order of games
+  champion_winrates = dict(
+      sorted(champion_winrates.items(), reverse=True, key=lambda x: x[1][2]))
+  champion_list = []
+  champion_winrates_list = []
 
-    # Overall wins and losses
-    print(wins, 'wins', losses, 'losses')
+  print(champion_winrates)
 
-    # Overall winrate to two decimal places
-    print('%.2f' % (winrate(wins, losses)) + "%")
-    for champion in champion_winrates:
-        # Prints champion winrates and checks for plural games
-        percentage = '%.2f' % (winrate(champion_winrates[champion]))
-        games = champion_winrates[champion][2]
+  # Overall wins and losses
+  print(wins, 'wins', losses, 'losses')
 
-        champion_list.append(champion)
-        champion_winrates_list.append(float(percentage))
+  # Overall winrate to two decimal places
+  print('%.2f' % (winrate(wins, losses)) + "%")
 
-        if games == 1:
-            print(champion, percentage + '%', games, 'game')
-        else:
-            print(champion, percentage + '%', games, 'games')
+  print(target_champion)
+  percentage = (winrate(
+      champion_winrates[target_champion][0], champion_winrates[target_champion][1]))
+  games = champion_winrates[champion][2]
+  print(percentage)
+  print(games)
 
-    return champion_list, champion_winrates_list
+  return percentage, games
